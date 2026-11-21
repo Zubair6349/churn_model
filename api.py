@@ -1,15 +1,21 @@
 
+from pathlib import Path
+
 import joblib
 import pandas as pd
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-model = joblib.load("churn_model.pkl")
-threshold = joblib.load("churn_threshold.pkl")
+BASE_DIR = Path(__file__).resolve().parent
+
+model = joblib.load(BASE_DIR / "churn_model.pkl")
+threshold = float(
+    joblib.load(BASE_DIR / "churn_threshold.pkl")
+)
 
 app = FastAPI(title="Customer Churn Prediction API")
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,13 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 class Customer(BaseModel):
     gender: str
@@ -52,9 +51,13 @@ class Customer(BaseModel):
 @app.post("/predict")
 def predict_churn(customer: Customer):
 
-    customer_data = pd.DataFrame([customer.model_dump()])
+    customer_data = pd.DataFrame(
+        [customer.model_dump()]
+    )
 
-    probability = model.predict_proba(customer_data)[0][1]
+    probability = model.predict_proba(
+        customer_data
+    )[0][1]
 
     prediction = int(probability >= threshold)
 
@@ -68,4 +71,6 @@ def predict_churn(customer: Customer):
 
 @app.get("/")
 def home():
-    return {"message": "Customer Churn Prediction API is running!"}
+    return {
+        "message": "Customer Churn Prediction API is running!"
+    }
